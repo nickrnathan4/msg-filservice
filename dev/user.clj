@@ -1,7 +1,11 @@
 (ns user
   (:require [clojure.tools.namespace.repl :as repl]
             [com.palletops.leaven :as leaven]
-            [msg-fileservice.core :as core]))
+            [msg-fileservice.core :as core]
+
+            [clj-time.core :as t]
+            [datomic.api :as d]
+            ))
 
 (def system nil)
 
@@ -25,3 +29,100 @@
 (defn reset []
   (stop)
   (repl/refresh :after 'user/go))
+
+(go)
+
+
+(def db-uri "datomic:mem://msg-fileservice")
+(def norms [[{:db/id                 #db/id[:db.part/db]
+              :db/ident              :msg-fileservice
+              :db.install/_partition :db.part/db}]
+
+            ;; File
+            [{:db/id                 #db/id[:db.part/db]
+              :db/ident              ::bucket
+              :db/valueType          :db.type/string
+              :db/cardinality        :db.cardinality/one
+              :db.install/_attribute :db.part/db}
+
+             {:db/id                 #db/id[:db.part/db]
+              :db/ident              ::version
+              :db/valueType          :db.type/bigint
+              :db/cardinality        :db.cardinality/one
+              :db.install/_attribute :db.part/db}
+
+             {:db/id                 #db/id[:db.part/db]
+              :db/ident              ::s3-key
+              :db/valueType          :db.type/string
+              :db/cardinality        :db.cardinality/one
+              :db.install/_attribute :db.part/db}]
+
+            ]
+  )
+
+(defn build-db [uri norms]
+       (println "Creating db")
+       (d/create-database uri)
+       (println "DB created")
+       (let [conn (d/connect uri)]
+         (doseq [n norms]
+           @(d/transact conn n)))
+       )
+
+
+(build-db db-uri norms)
+
+(d/delete-database db-uri)
+
+(def db (d/connect db-uri))
+
+(def sample-file [{:db/id #db/id[:db.part/user]
+                   ::bucket "msg-fileservice"
+                   ::version (bigint 1)
+                   ::s3-key "ABC"}])
+
+(def sample-file2 [{:db/id #db/id[:db.part/user]
+                   ::bucket "msg-fileservice"
+                   ::version (bigint 1)
+                   ::s3-key "CDEFG"}])
+
+@(d/transact db sample-file2)
+
+
+(defn pull-files []
+  (let [results (d/q '[:find [(pull ?e [::bucket
+                                        ::s3-key
+                                        ::version]) ... ]
+                       :where
+                       [?e ::bucket ?b]
+                       [?e ::version ?v]
+                       [?e ::s3-key ?s]]
+                     (d/db db))]
+    results))
+
+(pull-files)
+
+(defn pull-file
+  [key]
+  (let [results    (d/q
+                    '[:find ?e
+                      :in $ ?key
+                      :where
+                      [?e ::s3-key ?key]
+                      ]
+                    (d/db db)
+                    key)]
+    results))
+
+(pull-file "ABC")
+
+(d/q '[:find [(pull ?e [::bucket
+                        ::s3-key
+                        ::version]) ... ]
+       :where
+       [?e ::bucket ?b]
+       [?e ::version ?v]
+       [?e ::s3-key ?s]]
+     (d/db db))
+
+(d/pull (d/db db) '[::bucket ::s3-key] 17592186045419)

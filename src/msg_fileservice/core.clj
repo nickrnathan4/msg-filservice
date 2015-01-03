@@ -7,12 +7,12 @@
 
 (defn service-definition []
   {
-   :environment {:db-uri "datomic:mem://msg-fileservice" }
+   :environment {:db-uri "datomic:mem://msg-fileservice"}
    ::norms [[{:db/id                 #db/id[:db.part/db]
               :db/ident              :msg-fileservice
               :db.install/_partition :db.part/db}]
 
-            ;; File
+            ;; File Schema
             [{:db/id                 #db/id[:db.part/db]
               :db/ident              ::bucket
               :db/valueType          :db.type/string
@@ -20,28 +20,18 @@
               :db.install/_attribute :db.part/db}
 
              {:db/id                 #db/id[:db.part/db]
-                :db/ident              ::versions
-                :db/valueType          :db.type/ref
-                :db/cardinality        :db.cardinality/many
-              :db.install/_attribute :db.part/db}]
-
-            ;; Version
-            [{:db/id                 #db/id[:db.part/db]
               :db/ident              ::version
-              :db/valueType          :db.type/ref
-              :db/cardinality        :db.cardinality/many
-              :db/isComponent        true
-              :db.install/_attribute :db.part/db}
-             {:db/id                 #db/id[:db.part/db]
-              :db/ident              ::save-date
-              :db/valueType          :db.type/instance
+              :db/valueType          :db.type/bigint
               :db/cardinality        :db.cardinality/one
               :db.install/_attribute :db.part/db}
+
              {:db/id                 #db/id[:db.part/db]
-              :db/ident              ::file-key
+              :db/ident              ::s3-key
               :db/valueType          :db.type/string
               :db/cardinality        :db.cardinality/one
-              :db.install/_attribute :db.part/db}]]
+              :db.install/_attribute :db.part/db}]
+
+            ]
    }
   )
 
