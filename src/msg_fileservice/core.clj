@@ -41,21 +41,44 @@
               :db/cardinality        :db.cardinality/one
               :db.install/_attribute :db.part/db}]]
 
-   :routes ["/"
-            {""
-             (liberator/resource
-              {:available-media-types ["text/html"]
-               :allowed-methods [:get]
-               :handle-ok "<html>Main Street Genome File Service</html>"})}
+   ::routes ["/"
+             {""
+              (liberator/resource
+               {:available-media-types ["text/html"]
+                :allowed-methods [:get]
+                :handle-ok "<html>Main Street Genome File Service</html>"})
 
-            {""
-             (liberator/resource
-              {:available-media-types ["text/html"]
-               :allowed-methods [:get]
-               :handle-ok "<html>Main Street Genome File Service</html>"}
-              )
-             }
-            ]
+              "files"
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:get]
+                :handle-ok
+                (fn [{{{{:keys [db-uri]} :environment} :service-data} :request}]
+                  (d/q '[:find [(pull ?e [*]) ... ]
+                         :where
+                         [?e ::bucket]
+                         [?e ::version]
+                         [?e ::s3-key]]
+                       (d/db (d/connect db-uri)) )
+                  )})
+
+              ["file/" :s3-key]
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:get]
+                :handle-ok
+                (fn [{{{:keys [s3-key]}                  :params
+                       {{:keys [db-uri]} :environment}   :service-data
+                       } :request }]
+                  (d/q '[:find [(pull ?e [*]) ... ]
+                         :in $ ?key
+                         :where
+                         [?e ::s3-key ?key]]
+                       (d/db (d/connect db-uri))
+                       s3-key))})
+
+
+              }]
    }
   )
 
@@ -80,8 +103,8 @@
     this))
 
 ;; Middleware
-(defn wrap-service-data
-  [h service-data]
+(defn wrap-service-data [h service-data]
+  "Adds service data to request map."
   (fn [req]
     (let [service-data-req (assoc req :service-data service-data)]
       (h service-data-req))))
@@ -93,22 +116,25 @@
 
 ;; System Constructor
 (defn server
-  [ {:keys [::norms :environment :routes]}]
-  (map->Server
+  [ {:keys [::norms ::routes]
+     {:keys [httpkit-port http-basic-credentials db-uri]} :environment
+     :as service-data}]
 
+  (map->Server
    ;;Create database component
    {:datomic (map->Datomic
-              {:uri  (:db-uri environment )
+              {:uri db-uri
                :norms norms})
 
     ;;Create webserver component
     :httpkit (httpkit/httpkit
-              {:config  {:port (:httpkit-port environment)}
+              {:config  {:port httpkit-port}
                :handler (-> (bidi-ring/make-handler routes)
+                            (wrap-service-data service-data)
+                            edn/wrap-edn-params
                             )})
 
     }))
-
 
 (defn -main
   [& args]

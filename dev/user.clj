@@ -5,6 +5,7 @@
             [bidi.ring :as bidi-ring]
             [ring.middleware.edn :as edn]
             [msg-fileservice.core :as core]
+            [liberator.core :as liberator]
             [environ.core :as environ]
             [clj-time.core :as t]
             [datomic.api :as d]
@@ -39,7 +40,7 @@
 
 (clojure.core/comment
 
-(:datomic system)
+ (:httpkit system)
 
 (defn upload-file [file]
   @(d/transact (d/connect (:uri (:datomic system))) file))
@@ -56,8 +57,20 @@
 
 (upload-file sample-file2)
 
+(defn pull-files []
+  (let [results (d/q '[:find [(pull ?e [:msg-fileservice.core/bucket
+                                        :msg-fileservice.core/version
+                                        :msg-fileservice.core/s3-key]) ... ]
+                       :where
+                       [?e :msg-fileservice.core/bucket]
+                       [?e :msg-fileservice.core/version]
+                       [?e :msg-fileservice.core/s3-key]]
+                     (d/db (d/connect (:uri (:datomic system)))))]
+    results))
 
- (def db-uri "datomic:mem://msg-fileservice")
+(pull-files)
+
+(def db-uri "datomic:mem://msg-fileservice")
  (def norms [[{:db/id                 #db/id[:db.part/db]
                 :db/ident              :msg-fileservice
                 :db.install/_partition :db.part/db}]
