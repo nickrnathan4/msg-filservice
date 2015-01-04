@@ -1,8 +1,11 @@
 (ns user
   (:require [clojure.tools.namespace.repl :as repl]
             [com.palletops.leaven :as leaven]
+            [com.palletops.bakery.httpkit :as httpkit]
+            [bidi.ring :as bidi-ring]
+            [ring.middleware.edn :as edn]
             [msg-fileservice.core :as core]
-
+            [environ.core :as environ]
             [clj-time.core :as t]
             [datomic.api :as d]
             ))
@@ -30,35 +33,56 @@
   (stop)
   (repl/refresh :after 'user/go))
 
-(go)
+
+(reset)
 
 
-(def db-uri "datomic:mem://msg-fileservice")
-(def norms [[{:db/id                 #db/id[:db.part/db]
-              :db/ident              :msg-fileservice
-              :db.install/_partition :db.part/db}]
+(clojure.core/comment
 
-            ;; File
-            [{:db/id                 #db/id[:db.part/db]
-              :db/ident              ::bucket
-              :db/valueType          :db.type/string
-              :db/cardinality        :db.cardinality/one
-              :db.install/_attribute :db.part/db}
+(:datomic system)
 
-             {:db/id                 #db/id[:db.part/db]
-              :db/ident              ::version
-              :db/valueType          :db.type/bigint
-              :db/cardinality        :db.cardinality/one
-              :db.install/_attribute :db.part/db}
+(defn upload-file [file]
+  @(d/transact (d/connect (:uri (:datomic system))) file))
 
-             {:db/id                 #db/id[:db.part/db]
-              :db/ident              ::s3-key
-              :db/valueType          :db.type/string
-              :db/cardinality        :db.cardinality/one
-              :db.install/_attribute :db.part/db}]
+(def sample-file [{:db/id #db/id[:db.part/user]
+                   :msg-fileservice.core/bucket "msg-fileservice"
+                   :msg-fileservice.core/version (bigint 1)
+                   :msg-fileservice.core/s3-key "ABC"}])
 
-            ]
-  )
+(def sample-file2 [{:db/id #db/id[:db.part/user]
+                    :msg-fileservice.core/bucket "msg-fileservice"
+                    :msg-fileservice.core/version (bigint 1)
+                    :msg-fileservice.core/s3-key "CDE"}])
+
+(upload-file sample-file2)
+
+
+ (def db-uri "datomic:mem://msg-fileservice")
+ (def norms [[{:db/id                 #db/id[:db.part/db]
+                :db/ident              :msg-fileservice
+                :db.install/_partition :db.part/db}]
+
+              ;; File
+              [{:db/id                 #db/id[:db.part/db]
+                :db/ident              ::bucket
+                :db/valueType          :db.type/string
+                :db/cardinality        :db.cardinality/one
+                :db.install/_attribute :db.part/db}
+
+               {:db/id                 #db/id[:db.part/db]
+                :db/ident              ::version
+                :db/valueType          :db.type/bigint
+                :db/cardinality        :db.cardinality/one
+                :db.install/_attribute :db.part/db}
+
+               {:db/id                 #db/id[:db.part/db]
+                :db/ident              ::s3-key
+                :db/valueType          :db.type/string
+                :db/cardinality        :db.cardinality/one
+                :db.install/_attribute :db.part/db}]
+
+              ]
+    )
 
 (defn build-db [uri norms]
        (println "Creating db")
@@ -86,7 +110,7 @@
                    ::version (bigint 1)
                    ::s3-key "CDEFG"}])
 
-@(d/transact db sample-file2)
+@(d/transact db sample-file)
 
 
 (defn pull-files []
@@ -126,3 +150,5 @@
      (d/db db))
 
 (d/pull (d/db db) '[::bucket ::s3-key] 17592186045419)
+
+ )

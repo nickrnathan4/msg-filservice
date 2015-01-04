@@ -8,10 +8,14 @@
                  ;; Utilities
                  [clj-time "0.8.0"]
                  [environ "1.0.0"]
-                 [ring/ring-core "1.3.2"]
-                 [http-kit "2.1.16"]
-                 [bidi "1.12.0"]
+
+                 ;;Webserver
                  [com.palletops/leaven "0.2.1"]
+                 [com.palletops/bakery-httpkit "0.2.0"
+                  :exclude [http-kit]]
+                 [bidi "1.12.0"]
+                 [ring-basic-authentication "1.0.5"]
+                 [fogus/ring-edn "0.2.0"]
                  [liberator "0.12.2"]
 
                  ;; AWS
@@ -21,6 +25,8 @@
                  [datomic-schema "1.1.0"]
                  [com.datomic/datomic-pro "0.9.5052" :exclusions [joda-time]]
                  ]
+
+  :main msg-fileservice.core
 
   :repositories {"my.datomic.com"
                  {:url      "https://my.datomic.com/repo"
