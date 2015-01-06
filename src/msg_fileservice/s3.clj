@@ -40,7 +40,7 @@
 
 
 
-(defn upload-existing-file  [file-path]
+(defn upload-existing-file [file-path]
 
   "Takes a file path and S3 bucket name.
   Uploads the file to S3 and returns the UUID."

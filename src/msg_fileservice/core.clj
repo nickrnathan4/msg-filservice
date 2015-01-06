@@ -37,6 +37,12 @@
               :db.install/_attribute :db.part/db}
 
              {:db/id                 #db/id[:db.part/db]
+              :db/ident              ::filename
+              :db/valueType          :db.type/string
+              :db/cardinality        :db.cardinality/one
+              :db.install/_attribute :db.part/db}
+
+             {:db/id                 #db/id[:db.part/db]
               :db/ident              ::s3-key
               :db/valueType          :db.type/string
               :db/cardinality        :db.cardinality/one
@@ -61,6 +67,7 @@
                          :where
                          [?e ::bucket]
                          [?e ::version]
+                         [?e ::filename]
                          [?e ::s3-key]]
                        (d/db (d/connect db-uri))))
 
@@ -93,6 +100,40 @@
                        (d/db (d/connect db-uri))
                        s3-key))})
 
+              "test-path"
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:post :get]
+                :handle-ok (fn [{:keys [request]}] (str request))
+                :post! (fn [{{:keys [params]
+                              { {:keys [db-uri]} :environment} :service-data}
+                             :request} ]
+
+                         ;(s3/upload-existing-file (:tempfile (:myfile params)))
+                         (map (fn [file]
+                                (s3/upload-existing-file (:tempfile (file params)))
+                                )
+                              (keys params))
+
+                         @(d/transact (d/connect db-uri)
+                                      (mapv (fn [file]
+                                              {:db/id (d/tempid :db.part/user)
+                                               ::bucket "msg-fileservice"
+                                               ::version (bigint 1)
+                                               ::filename (:filename (file params))
+                                               ::s3-key (:filename (file params))})
+                                            (keys params))))
+                :handle-created
+                (fn [{{:keys [params]
+                       { {:keys [db-uri]} :environment} :service-data}
+                      :request} ]
+                  (mapv (fn [file]
+                          (:tempfile (file params)))
+                        (keys params)))
+
+                ;;(fn [{:keys [request]}] request)
+
+                })
               }]
    }
   )
