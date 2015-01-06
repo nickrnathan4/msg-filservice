@@ -112,6 +112,21 @@
                                  [[:db.fn/retractEntity
                                    [::s3-key (java.util.UUID/fromString deleted-key)]]])))})
 
+              ["filename/" :filename]
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:get]
+                :handle-ok
+                (fn [{{{:keys [filename]}                  :params
+                       {{:keys [db-uri]} :environment}     :service-data
+                       } :request }]
+                  (d/q '[:find [(pull ?e [*]) ... ]
+                         :in $ ?fname
+                         :where
+                         [?e ::filename ?fname]]
+                       (d/db (d/connect db-uri))
+                       filename))})
+
               ["download/" :s3-key]
               (liberator/resource
                {:available-media-types ["application/edn"]
@@ -127,8 +142,6 @@
                                          (d/db (d/connect db-uri))
                                          (java.util.UUID/fromString s3-key))]
                     (s3/download-file s3-key (::filename (first filename)))))})
-
-
 
               }]
    }
