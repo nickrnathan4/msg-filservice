@@ -10,10 +10,10 @@
                  [environ "1.0.0"]
 
                  ;;Webserver
+                 [ring/ring-defaults "0.1.3"]
                  [com.palletops/leaven "0.2.1"]
-                 [com.palletops/bakery-httpkit "0.2.0"
-                  :exclude [http-kit]]
-                 [bidi "1.12.0"]
+                 [com.palletops/bakery-httpkit "0.2.0" :exclude [http-kit]]
+                 [bidi "1.12.0" ]
                  [ring-basic-authentication "1.0.5"]
                  [fogus/ring-edn "0.2.0"]
                  [liberator "0.12.2"]

@@ -35,12 +35,86 @@
   (repl/refresh :after 'user/go))
 
 
-(reset)
-
 
 (clojure.core/comment
 
- (:httpkit system)
+  (def testmap {:key1 "a" :key2 "b"})
+  (vec (keys testmap) )
+
+
+  (def mylist '("file1" "file2"))
+
+  @(d/transact (d/connect "datomic:mem://msg-fileservice")
+               (mapv (fn [file]
+                       {:db/id #db/id[:db.part/user]
+                        :msg-fileservice.core/bucket "msg-fileservice"
+                        :msg-fileservice.core/version (bigint 1)
+                        :msg-fileservice.core/s3-key file}
+                       ) mylist))
+  (def txr (mapv (fn [file]
+                   {:db/id (d/tempid :db.part/user)
+                 :msg-fileservice.core/bucket "msg-fileservice"
+                 :msg-fileservice.core/version (bigint 1)
+                 :msg-fileservice.core/s3-key file}
+                ) mylist))
+
+  (prn txr)
+
+
+  (map (fn [file]
+         (d/transact (d/connect "datomic:mem://msg-fileservice")
+                     [{:db/id #db/id[:db.part/user]
+                       :msg-fileservice.core/bucket "msg-fileservice"
+                       :msg-fileservice.core/version (bigint 1)
+                       :msg-fileservice.core/s3-key file}]
+                     ))
+       mylist)
+
+
+  (map (d/transact (d/connect "datomic:mem://msg-fileservice")
+                    [{:db/id #db/id[:db.part/user]
+                      :msg-fileservice.core/bucket "msg-fileservice"
+                      :msg-fileservice.core/version (bigint 1)
+                      :msg-fileservice.core/s3-key "SUMASUMA"}])
+       mylist)
+
+  (fn [{:keys            [::routes
+                          ::norms
+                          tasks]
+        {:keys [httpkit-port
+                http-basic-credentials
+                db-uri]} :environment
+        :as              service-data}]
+    db-uri
+    )
+
+  (fn [{{:keys [multipart-params]
+         {:keys [db-uri]} :environment}
+        :request} ]
+
+    (map (fn [file]
+           @(d/transact (d/connect db-uri)
+                        [{:db/id #db/id[:db.part/user]
+                          :msg-fileservice.core/bucket "msg-fileservice"
+                          :msg-fileservice.core/version (bigint 1)
+                          :msg-fileservice.core/s3-key file}]
+                        ))
+         (keys multipart-params))
+
+    )
+
+    :post!
+    (fn [{{{{:keys [db-uri]} :environment} :service-data
+           {:keys [key path]}      :params} :request}]
+      @(d/transact (d/connect "datomic:mem://msg-fileservice")
+                   [{:db/id #db/id[:db.part/user]
+                     ::bucket "msg-fileservice"
+                     ::version (bigint 1)
+                     ::s3-key "YYYY"}]
+                   )
+      )
+
+ (:Httpkit system)
 
 (defn upload-file [file]
   @(d/transact (d/connect (:uri (:datomic system))) file))

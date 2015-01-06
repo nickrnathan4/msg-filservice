@@ -6,6 +6,7 @@
             [bidi.ring :as bidi-ring]
             [liberator.core :as liberator]
             [ring.middleware.edn :as edn]
+            [ring.middleware.defaults :refer [wrap-defaults]]
             [ring.middleware.basic-authentication :as basic-authentication]
             [datomic.api :as d]
             [msg-fileservice.s3 :as s3]))
@@ -46,12 +47,14 @@
               (liberator/resource
                {:available-media-types ["text/html"]
                 :allowed-methods [:get]
-                :handle-ok "<html>Main Street Genome File Service</html>"})
+                :handle-ok
+                "<html>Main Street Genome File Service</html>"})
 
               "files"
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:get]
+                :allowed-methods [:post :get]
+
                 :handle-ok
                 (fn [{{{{:keys [db-uri]} :environment} :service-data} :request}]
                   (d/q '[:find [(pull ?e [*]) ... ]
@@ -59,8 +62,21 @@
                          [?e ::bucket]
                          [?e ::version]
                          [?e ::s3-key]]
-                       (d/db (d/connect db-uri)) )
-                  )})
+                       (d/db (d/connect db-uri))))
+
+                :post!
+                (fn [{{:keys [params]
+                       { {:keys [db-uri]} :environment} :service-data}
+                      :request} ]
+
+                  @(d/transact (d/connect db-uri)
+                               (mapv (fn [file]
+                                       {:db/id (d/tempid :db.part/user)
+                                        ::bucket "msg-fileservice"
+                                        ::version (bigint 1)
+                                        ::s3-key (:filename (file params))})
+                                     (keys params))))
+                })
 
               ["file/" :s3-key]
               (liberator/resource
@@ -76,7 +92,6 @@
                          [?e ::s3-key ?key]]
                        (d/db (d/connect db-uri))
                        s3-key))})
-
 
               }]
    }
@@ -109,6 +124,15 @@
     (let [service-data-req (assoc req :service-data service-data)]
       (h service-data-req))))
 
+;; Custom ring middleware settings
+(def custom-wrap
+  {:params    {:urlencoded true
+               :multipart  true
+               :nested     true
+               :keywordize true}
+   :responses {:not-modified-responses true
+               :absolute-redirects     true
+               :content-types          true}})
 
 ;; System Definition
 (leaven/defsystem Server [:datomic :httpkit])
@@ -131,8 +155,9 @@
               {:config  {:port httpkit-port}
                :handler (-> (bidi-ring/make-handler routes)
                             (wrap-service-data service-data)
-                            edn/wrap-edn-params
-                            )})
+                            (wrap-defaults custom-wrap)
+                             edn/wrap-edn-params
+                             )})
 
     }))
 
