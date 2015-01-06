@@ -87,8 +87,7 @@
                                                  ::version (bigint 1)
                                                  ::filename (:filename file)
                                                  ::s3-key (:s3-key file )})
-                                              file-map))))
-                })
+                                              file-map))))})
 
               ["file/" :s3-key]
               (liberator/resource
@@ -111,8 +110,25 @@
                   (if-let [deleted-key (s3/delete-file! s3-key)]
                     @(d/transact (d/connect db-uri)
                                  [[:db.fn/retractEntity
-                                   [::s3-key (java.util.UUID/fromString deleted-key)]]])))
-                })
+                                   [::s3-key (java.util.UUID/fromString deleted-key)]]])))})
+
+              ["download/" :s3-key]
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:get]
+                :handle-ok
+                (fn [{{{:keys [s3-key]}                  :params
+                       {{:keys [db-uri]} :environment}   :service-data
+                       } :request }]
+                  (if-let [filename (d/q '[:find [(pull ?e [::filename]) ... ]
+                                           :in $ ?key
+                                           :where
+                                           [?e ::s3-key ?key]]
+                                         (d/db (d/connect db-uri))
+                                         (java.util.UUID/fromString s3-key))]
+                    (s3/download-file s3-key (::filename (first filename)))))})
+
+
 
               }]
    }

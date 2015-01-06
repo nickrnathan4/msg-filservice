@@ -1,7 +1,8 @@
 (ns msg-fileservice.s3
   (:require [aws.sdk.s3 :as s3]
-            [clojure.java.io :refer :all]
-            [environ.core :refer [env]]))
+            [clojure.java.io :as io]
+            [environ.core :refer [env]]
+            [msg-fileservice.utils :as utils]))
 
 
 (defn list-files []
@@ -14,8 +15,22 @@
     (s3/list-objects credentials bucket)))
 
 
+(defn download-file [s3-key filename]
 
-(defn download-file [s3-key]
+  "Takes a file key (UUID) and file name [& file path].
+   Writes the file to disk.
+   Returns the corresponding Java file object."
+
+  (let [credentials {:access-key (env :aws-access-key)
+                     :secret-key (env :aws-secret-key)}
+        bucket      (env :s3-bucket)]
+    (with-open [rdr (io/reader (:content (s3/get-object credentials bucket s3-key)))]
+      (utils/write-file filename (line-seq rdr)))
+    (io/as-file filename)
+    ))
+
+
+(defn download-file-contents [s3-key]
 
   "Takes a file key (UUID).
   Returns the content of a file stored on S3."
@@ -47,7 +62,7 @@
 
   (let [s3-key (java.util.UUID/randomUUID)]
     (upload-file (str s3-key)
-                 (input-stream file-path))
+                 (io/input-stream file-path))
     s3-key))
 
 

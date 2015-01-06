@@ -9,6 +9,9 @@
             [environ.core :as environ]
             [clj-time.core :as t]
             [datomic.api :as d]
+            [msg-fileservice.s3 :as s3]
+            [clojure.java.io :as io]
+            [msg-fileservice.utils :as utils]
             ))
 
 (def system nil)
@@ -37,6 +40,38 @@
 
 
 (clojure.core/comment
+
+  (def filename  (d/q '[:find [(pull ?e [:msg-fileservice.core/filename]) ... ]
+                        :in $ ?key
+                        :where
+                        [?e :msg-fileservice.core/s3-key ?key]]
+                      (d/db (d/connect "datomic:mem://msg-fileservice"))
+                      (java.util.UUID/fromString "6b34557d-bc09-4f04-a8fc-e52a39d3d7cf")))
+
+  (:msg-fileservice.core/filename (first filename) )
+
+
+  (def file-id "2a057ec5-3dae-4545-a736-33388b053aa7")
+
+  (io/as-file "testfile.txt")
+
+  (d/q '[:find [(pull ?e [::filename]) ... ]
+         :in $ ?key
+         :where
+         [?e ::s3-key ?key]]
+       (d/db (d/connect db-uri))
+       (java.util.UUID/fromString s3-key))
+
+  (def myfile (s3/download-file file-id "inmem-test.txt"))
+
+
+  (defn write-file [file-name lines]
+    (with-open [wtr (io/writer file-name)]
+      (doseq [line lines] (.write wtr line))))
+
+  (defn download-file)
+  (with-open [rdr (io/reader (s3/download-file file-id))]
+    (my-writer "testfile.txt"(line-seq rdr)))
 
   (def someid (java.util.UUID/randomUUID) )
   (def stringif (str someid))
