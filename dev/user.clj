@@ -38,6 +38,11 @@
 
 (clojure.core/comment
 
+  (def someid (java.util.UUID/randomUUID) )
+  (def stringif (str someid))
+  (java.util.UUID/fromString stringif)
+
+
   (def testmap {:key1 "a" :key2 "b"})
   (vec (keys testmap) )
 
@@ -49,7 +54,8 @@
                        {:db/id #db/id[:db.part/user]
                         :msg-fileservice.core/bucket "msg-fileservice"
                         :msg-fileservice.core/version (bigint 1)
-                        :msg-fileservice.core/s3-key file}
+                        :msg-fileservice.core/filename
+                        file}
                        ) mylist))
   (def txr (mapv (fn [file]
                    {:db/id (d/tempid :db.part/user)

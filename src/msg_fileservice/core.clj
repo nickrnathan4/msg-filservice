@@ -44,7 +44,7 @@
 
              {:db/id                 #db/id[:db.part/db]
               :db/ident              ::s3-key
-              :db/valueType          :db.type/string
+              :db/valueType          :db.type/uuid
               :db/cardinality        :db.cardinality/one
               :db.install/_attribute :db.part/db}]]
 
@@ -73,16 +73,22 @@
 
                 :post!
                 (fn [{{:keys [params]
-                       { {:keys [db-uri]} :environment} :service-data}
-                      :request} ]
-
-                  @(d/transact (d/connect db-uri)
-                               (mapv (fn [file]
-                                       {:db/id (d/tempid :db.part/user)
-                                        ::bucket "msg-fileservice"
-                                        ::version (bigint 1)
-                                        ::s3-key (:filename (file params))})
-                                     (keys params))))
+                              { {:keys [db-uri]} :environment} :service-data}
+                             :request}]
+                         (if-let [ file-map
+                                  (doall (map (fn [file]
+                                                {:filename (:filename (file params))
+                                                 :s3-key (s3/upload-existing-file
+                                                          (:tempfile (file params)))})
+                                              (keys params)))]
+                           @(d/transact (d/connect db-uri)
+                                        (mapv (fn [file]
+                                                {:db/id (d/tempid :db.part/user)
+                                                 ::bucket "msg-fileservice"
+                                                 ::version (bigint 1)
+                                                 ::filename (:filename file)
+                                                 ::s3-key (:s3-key file )})
+                                              file-map))))
                 })
 
               ["file/" :s3-key]
@@ -98,42 +104,9 @@
                          :where
                          [?e ::s3-key ?key]]
                        (d/db (d/connect db-uri))
-                       s3-key))})
+                       (java.util.UUID/fromString s3-key))
+                  )})
 
-              "test-path"
-              (liberator/resource
-               {:available-media-types ["application/edn"]
-                :allowed-methods [:post :get]
-                :handle-ok (fn [{:keys [request]}] (str request))
-                :post! (fn [{{:keys [params]
-                              { {:keys [db-uri]} :environment} :service-data}
-                             :request} ]
-
-                         ;(s3/upload-existing-file (:tempfile (:myfile params)))
-                         (map (fn [file]
-                                (s3/upload-existing-file (:tempfile (file params)))
-                                )
-                              (keys params))
-
-                         @(d/transact (d/connect db-uri)
-                                      (mapv (fn [file]
-                                              {:db/id (d/tempid :db.part/user)
-                                               ::bucket "msg-fileservice"
-                                               ::version (bigint 1)
-                                               ::filename (:filename (file params))
-                                               ::s3-key (:filename (file params))})
-                                            (keys params))))
-                :handle-created
-                (fn [{{:keys [params]
-                       { {:keys [db-uri]} :environment} :service-data}
-                      :request} ]
-                  (mapv (fn [file]
-                          (:tempfile (file params)))
-                        (keys params)))
-
-                ;;(fn [{:keys [request]}] request)
-
-                })
               }]
    }
   )
