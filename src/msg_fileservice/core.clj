@@ -46,6 +46,7 @@
               :db/ident              ::s3-key
               :db/valueType          :db.type/uuid
               :db/cardinality        :db.cardinality/one
+              :db/unique             :db.unique/identity
               :db.install/_attribute :db.part/db}]]
 
    ::routes ["/"
@@ -59,8 +60,7 @@
               "files"
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:post :get]
-
+                :allowed-methods [:get :post]
                 :handle-ok
                 (fn [{{{{:keys [db-uri]} :environment} :service-data} :request}]
                   (d/q '[:find [(pull ?e [*]) ... ]
@@ -70,7 +70,6 @@
                          [?e ::filename]
                          [?e ::s3-key]]
                        (d/db (d/connect db-uri))))
-
                 :post!
                 (fn [{{:keys [params]
                               { {:keys [db-uri]} :environment} :service-data}
@@ -94,7 +93,7 @@
               ["file/" :s3-key]
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:get]
+                :allowed-methods [:get :delete]
                 :handle-ok
                 (fn [{{{:keys [s3-key]}                  :params
                        {{:keys [db-uri]} :environment}   :service-data
@@ -104,8 +103,16 @@
                          :where
                          [?e ::s3-key ?key]]
                        (d/db (d/connect db-uri))
-                       (java.util.UUID/fromString s3-key))
-                  )})
+                       (java.util.UUID/fromString s3-key)))
+                :delete!
+                (fn [{{{:keys [s3-key]}                  :params
+                       {{:keys [db-uri]} :environment}   :service-data
+                       } :request }]
+                  (if-let [deleted-key (s3/delete-file! s3-key)]
+                    @(d/transact (d/connect db-uri)
+                                 [[:db.fn/retractEntity
+                                   [::s3-key (java.util.UUID/fromString deleted-key)]]])))
+                })
 
               }]
    }

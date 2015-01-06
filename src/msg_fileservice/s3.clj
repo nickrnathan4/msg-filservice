@@ -15,7 +15,7 @@
 
 
 
-(defn download-file [file-key]
+(defn download-file [s3-key]
 
   "Takes a file key (UUID).
   Returns the content of a file stored on S3."
@@ -23,7 +23,7 @@
   (let [credentials {:access-key (env :aws-access-key)
                      :secret-key (env :aws-secret-key)}
         bucket      (env :s3-bucket)]
-    (slurp (:content (s3/get-object credentials bucket file-key)))))
+    (slurp (:content (s3/get-object credentials bucket s3-key)))))
 
 
 
@@ -52,11 +52,13 @@
 
 
 
-(defn delete-file! [file-key]
+(defn delete-file! [s3-key]
 
-  "Deletes a file."
+  "Deletes a file and returns key"
 
   (let  [credentials {:access-key (env :aws-access-key)
                       :secret-key (env :aws-secret-key)}
          bucket      (env :s3-bucket)]
-    (s3/delete-object credentials bucket file-key)))
+    (s3/delete-object credentials bucket s3-key)
+    s3-key
+    ))
