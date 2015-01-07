@@ -143,9 +143,42 @@
                                          (java.util.UUID/fromString s3-key))]
                     (s3/download-file s3-key (::filename (first filename)))))})
 
-              }]
-   }
-  )
+              ["update"]
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:patch :get]
+                :handle-ok
+                (fn [req] (:request req))
+                :patch!
+                (fn [{{:keys [params]
+                      { {:keys [db-uri]} :environment} :service-data}
+                     :request}]
+                  (if-let [updates
+                           {:old-entity-data
+                            (d/q '[:find [(pull ?e [:db/id
+                                                    ::version
+                                                    ::s3-key]) ... ]
+                                   :in $ ?s3-key
+                                   :where [?e ::s3-key ?s3-key]]
+                                 (d/db (d/connect db-uri))
+                                 (java.util.UUID/fromString
+                                  ((first (vec (keys params))) params)))
+
+                            :new-filename (:filename ((second (vec (keys params)))
+                                                      params))
+                            :new-key      (s3/upload-existing-file
+                                           (:tempfile ((second (vec (keys params)))
+                                                       params)))}]
+
+                    @(d/transact (d/connect db-uri)
+                                 [{:db/id (:db/id (first (:old-entity-data updates)))
+                                   ::version (+ 1 (::version (first (:old-entity-data updates))))}
+                                  {:db/id (:db/id (first (:old-entity-data updates)))
+                                   ::filename (:new-filename updates)}
+
+                                  {:db/id (:db/id (first (:old-entity-data updates)))
+                                   ::s3-key (:new-key updates)}])))})
+              }]})
 
 ;; Database Component
 (defrecord Datomic [uri norms]
