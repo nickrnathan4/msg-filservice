@@ -176,6 +176,43 @@
 
                                   {:db/id (:db/id (first (:old-entity-data updates)))
                                    ::s3-key (:new-key updates)}])))})
+
+              ["history/" :s3-key]
+              (liberator/resource
+               {:available-media-types ["application/edn"]
+                :allowed-methods [:get]
+                :handle-ok
+                (fn [{{{:keys [s3-key]}                  :params
+                       {{:keys [db-uri]} :environment}   :service-data
+                       } :request }]
+                  (if-let [entity (first (d/q '[:find [?e ... ]
+                                                :in $ ?key
+                                                :where
+                                                [?e :msg-fileservice.core/s3-key ?key]]
+                                              (d/db (d/connect db-uri))
+                                              (java.util.UUID/fromString s3-key)))]
+                    (->> (d/q
+                          '[:find ?tx
+                            :in $ ?e
+                            :where
+                            [?e _ _ ?tx]]
+                          (d/history (d/db (d/connect db-uri)))
+                          entity)
+                         (map #(d/entity (d/db (d/connect db-uri)) (first %)))
+                         (sort-by :db/txInstant)
+                         (map (fn [tx]
+                                (d/q '[:find [(pull ?e [:msg-fileservice.core/s3-key
+                                                        :msg-fileservice.core/version])...]
+                                       :in $ ?e
+                                       :where
+                                       [?e :msg-fileservice.core/s3-key ?key]
+                                       [?e :msg-fileservice.core/version ?version]]
+                                     (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
+                                     entity))))))
+
+                })
+
+
               }]})
 
 ;; Database Component
