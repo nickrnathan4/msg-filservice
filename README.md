@@ -1,14 +1,48 @@
 # msg-fileservice
 
-A microservice for file management backed by S3 and Datomic
+The MSG fileservice is a RESTful webservice backed by S3 and Datomic.
+The service supports CRUD operatations and is protected by basic
+HTTP authentication.
+
+## File Resources
+
+File resources are defined by the following attributes:
+* datomic id
+* unique uuid (corresponding to an S3 key)
+* file name
+* file version
 
 ## Usage
 
-FIXME
+Use the service to create, read, update and delete file resources.
+File resources can be accessed via the following HTTP endpoints.
 
-## License
+###CREATE
+* **POST "files":** takes a file or multiple files as parameters, saves the files on S3, creates a database file entity
 
-Copyright © 2014 FIXME
+###READ
+* **GET "files":** returns a vector of a maps containing all files stored in the database
+* **GET "file/<uuid>":** takes a url parameter specifying a unique file uuid, returns corresponding database entity
+* **GET "filename/<filename>":** takes a url parameter specifying a file name, returns all corresponding database entities
+* **GET "download/<uuid>":** takes a url parameter specifying a file uuid, downloads a copy of the file locally, returns Java file object
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+###UPDATE
+* **PATCH "update":** takes a file and that file entity's uuid (in that order) as arguments, uploads the new version of the file,  updates the file version, file name and uuid in the database
+
+###DELETE
+* **DELETE "file/<uuid>":** takes a url parameter specifying a unique file uuid, deletes the file and retracts the database entity
+
+
+## Environment
+
+Set the following environment variables.
+
+AWS_ACCESS_KEY
+AWS_SECRET_KEY
+S3_BUCKET
+
+MSG_HTTP_BASIC_USERNAME
+MSG_HTTP_BASIC_PASSWORD
+
+DATOMIC_USERNAME
+DATOMIC_PASSWORD

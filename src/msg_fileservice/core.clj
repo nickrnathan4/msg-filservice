@@ -146,9 +146,7 @@
               ["update"]
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:patch :get]
-                :handle-ok
-                (fn [req] (:request req))
+                :allowed-methods [:patch]
                 :patch!
                 (fn [{{:keys [params]
                       { {:keys [db-uri]} :environment} :service-data}
@@ -239,7 +237,10 @@
                :handler (-> (bidi-ring/make-handler routes)
                             (wrap-service-data service-data)
                             (wrap-defaults custom-wrap)
-                             edn/wrap-edn-params
+                            edn/wrap-edn-params
+                            (basic-authentication/wrap-basic-authentication
+                             (fn [name pass]
+                               (= [name pass] http-basic-credentials)))
                              )})
 
     }))
