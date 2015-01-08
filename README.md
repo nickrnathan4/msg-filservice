@@ -8,7 +8,7 @@ HTTP authentication.
 
 File resources are defined by the following attributes:
 * datomic id
-* unique uuid (corresponding to an S3 key)
+* unique uuid (corresponds to S3 key)
 * file name
 * file version
 
@@ -17,19 +17,19 @@ File resources are defined by the following attributes:
 Use the service to create, read, update and delete file resources.
 File resources can be accessed via the following HTTP endpoints.
 
-###CREATE
+###Create
 * **POST "files":** takes a file or multiple files as parameters, saves the files on S3, creates a database file entity
 
-###READ
+###Read
 * **GET "files":** returns a vector of a maps containing all files stored in the database
-* **GET "file/<uuid>":** takes a url parameter specifying a unique file uuid, returns corresponding database entity
-* **GET "filename/<filename>":** takes a url parameter specifying a file name, returns all corresponding database entities
-* **GET "download/<uuid>":** takes a url parameter specifying a file uuid, downloads a copy of the file locally, returns Java file object
+* **GET "file/":** takes a url parameter specifying a unique file uuid, returns corresponding database entity
+* **GET "filename/":** takes a url parameter specifying a file name, returns all corresponding database entities
+* **GET "download/":** takes a url parameter specifying a file uuid, downloads a copy of the file locally, returns Java file object
 
-###UPDATE
+###Update
 * **PATCH "update":** takes a file and that file entity's uuid (in that order) as arguments, uploads the new version of the file,  updates the file version, file name and uuid in the database
 
-###DELETE
+###Delete
 * **DELETE "file/<uuid>":** takes a url parameter specifying a unique file uuid, deletes the file and retracts the database entity
 
 
@@ -37,6 +37,7 @@ File resources can be accessed via the following HTTP endpoints.
 
 Set the following environment variables.
 
+```clojure
 AWS_ACCESS_KEY
 AWS_SECRET_KEY
 S3_BUCKET
@@ -46,3 +47,4 @@ MSG_HTTP_BASIC_PASSWORD
 
 DATOMIC_USERNAME
 DATOMIC_PASSWORD
+```
