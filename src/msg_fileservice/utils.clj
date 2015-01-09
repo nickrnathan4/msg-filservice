@@ -1,11 +1,11 @@
 (ns msg-fileservice.utils
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:import [org.apache.commons.io IOUtils]))
 
-(defn write-file [filename lines]
+(defn object->file [in-stream filename]
 
-  "Uses the Java BufferedWriter. Takes the name and optionally
-   the file path as the first argument. Takes a list of lines
-   as the second argument. Writes lines to the file specified."
+  "Takes S3ObjectInputStream, converts to byte array
+   and writes to file"
 
-  (with-open [wtr (io/writer filename)]
-    (doseq [line lines] (.write wtr line))))
+  (with-open [out (io/output-stream filename)]
+    (.write out (IOUtils/toByteArray in-stream))))

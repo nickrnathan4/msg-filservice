@@ -141,7 +141,9 @@
                                            [?e ::s3-key ?key]]
                                          (d/db (d/connect db-uri))
                                          (java.util.UUID/fromString s3-key))]
-                    (s3/download-file s3-key (::filename (first filename)))))})
+                    (s3/download-file s3-key (::filename (first filename)))
+                    (s3/download-file s3-key s3-key))
+                  )})
 
               ["update"]
               (liberator/resource

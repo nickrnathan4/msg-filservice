@@ -24,11 +24,11 @@
   (let [credentials {:access-key (env :aws-access-key)
                      :secret-key (env :aws-secret-key)}
         bucket      (env :s3-bucket)]
-    (with-open [rdr (io/reader (:content (s3/get-object credentials bucket s3-key)))]
-      (utils/write-file filename (line-seq rdr)))
+    (utils/object->file
+     (:content (s3/get-object credentials bucket s3-key))
+     filename)
     (io/as-file filename)
     ))
-
 
 (defn download-file-contents [s3-key]
 
@@ -61,9 +61,9 @@
   Uploads the file to S3 and returns the UUID."
 
   (let [s3-key (java.util.UUID/randomUUID)]
-    (upload-file (str s3-key)
-                 (io/input-stream file-path))
-    s3-key))
+    (with-open [in (io/input-stream file-path)]
+      (upload-file (str s3-key) in)
+      s3-key)))
 
 
 
