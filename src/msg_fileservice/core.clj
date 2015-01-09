@@ -89,28 +89,23 @@
                                                  ::s3-key (:s3-key file )})
                                               file-map))))})
 
-              ["file/" :s3-key]
+              ["files/" :id]
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get :delete]
+
                 :handle-ok
-                (fn [{{{:keys [s3-key]}                  :params
+                (fn [{{{:keys [id]}                      :params
                        {{:keys [db-uri]} :environment}   :service-data
                        } :request }]
-                  (d/q '[:find [(pull ?e [*]) ... ]
-                         :in $ ?key
-                         :where
-                         [?e ::s3-key ?key]]
-                       (d/db (d/connect db-uri))
-                       (java.util.UUID/fromString s3-key)))
+                  (d/pull (d/db (d/connect db-uri)) '[*] (read-string id)))
+
                 :delete!
-                (fn [{{{:keys [s3-key]}                  :params
+                (fn [{{{:keys [id]}                      :params
                        {{:keys [db-uri]} :environment}   :service-data
                        } :request }]
-                  (if-let [deleted-key (s3/delete-file! s3-key)]
-                    @(d/transact (d/connect db-uri)
-                                 [[:db.fn/retractEntity
-                                   [::s3-key (java.util.UUID/fromString deleted-key)]]])))})
+                  @(d/transact (d/connect db-uri)
+                               [[:db.fn/retractEntity (read-string id)]]))})
 
               ["filename/" :filename]
               (liberator/resource
@@ -142,7 +137,7 @@
                                          (d/db (d/connect db-uri))
                                          (java.util.UUID/fromString s3-key))]
                     (s3/download-file s3-key (::filename (first filename)))
-                    (s3/download-file s3-key s3-key))
+                    )
                   )})
 
               ["update"]
