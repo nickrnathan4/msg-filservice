@@ -72,8 +72,8 @@
                        (d/db (d/connect db-uri))))
                 :post!
                 (fn [{{:keys [params]
-                              { {:keys [db-uri]} :environment} :service-data}
-                             :request}]
+                       { {:keys [db-uri]} :environment} :service-data}
+                      :request}]
                          (if-let [ file-map
                                   (doall (map (fn [file]
                                                 {:filename (:filename (file params))
@@ -95,10 +95,51 @@
                 :allowed-methods [:get :delete]
 
                 :handle-ok
-                (fn [{{{:keys [id]}                      :params
-                       {{:keys [db-uri]} :environment}   :service-data
-                       } :request }]
-                  (d/pull (d/db (d/connect db-uri)) '[*] (read-string id)))
+                (fn [{{:keys [params content-type]
+                      { {:keys [db-uri]} :environment} :service-data}
+                     :request}]
+
+                 ;; Return file edn
+                 (if (= "application/edn" content-type)
+                   (let [entity (read-string (:id params))
+                         qry '[:find [(pull ?e [:msg-fileservice.core/s3-key
+                                                :msg-fileservice.core/filename])...]
+                               :in $ ?e
+                               :where
+                               [?e :msg-fileservice.core/s3-key]
+                               [?e :msg-fileservice.core/filename]] ]
+                     (cond
+                      (and (not (nil? (:history params))) (read-string (:history params)))
+                      (->> (d/q '[:find ?tx :in $ ?e :where [?e _ _ ?tx]]
+                                (d/history (d/db (d/connect db-uri)))
+                                entity)
+                           (map #(d/entity (d/db (d/connect db-uri)) (first %)))
+                           (sort-by :db/txInstant)
+                           (map (fn [tx]
+                                  (-> (first (d/q qry
+                                                  (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
+                                                  entity))
+                                      (assoc :db/txInstant (:db/txInstant tx))
+                                      ))))
+
+                      (not (nil? (:as-of params)))
+                      (d/q qry
+                           (d/as-of (d/db (d/connect db-uri)) (:as-of params))
+                           entity)
+
+                      (not (nil? (:since params)))
+                      (d/q qry
+                           (d/since (d/db (d/connect db-uri)) (:since params))
+                           entity)
+
+                      :else
+                      (d/pull (d/db (d/connect db-uri)) '[*] entity)))
+
+                   ;; Download File
+                   (if (nil? (:s3-key params))
+                     (let [file (d/pull (d/db (d/connect db-uri)) '[*] (read-string (:id params)))]
+                       (s3/download-file (str (::s3-key file)) (::filename file)))
+                     (s3/download-file (:s3-key params) (:s3-key params)))))
 
                 :delete!
                 (fn [{{{:keys [id]}                      :params
@@ -122,23 +163,6 @@
                        (d/db (d/connect db-uri))
                        filename))})
 
-              ["download/" :s3-key]
-              (liberator/resource
-               {:available-media-types ["application/edn"]
-                :allowed-methods [:get]
-                :handle-ok
-                (fn [{{{:keys [s3-key]}                  :params
-                       {{:keys [db-uri]} :environment}   :service-data
-                       } :request }]
-                  (if-let [filename (d/q '[:find [(pull ?e [::filename]) ... ]
-                                           :in $ ?key
-                                           :where
-                                           [?e ::s3-key ?key]]
-                                         (d/db (d/connect db-uri))
-                                         (java.util.UUID/fromString s3-key))]
-                    (s3/download-file s3-key (::filename (first filename)))
-                    )
-                  )})
 
               ["update"]
               (liberator/resource
@@ -174,40 +198,16 @@
                                   {:db/id (:db/id (first (:old-entity-data updates)))
                                    ::s3-key (:new-key updates)}])))})
 
-              ["history/" :s3-key]
+
+              ["echo"]
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get]
                 :handle-ok
-                (fn [{{{:keys [s3-key]}                  :params
-                       {{:keys [db-uri]} :environment}   :service-data
-                       } :request }]
-                  (if-let [entity (first (d/q '[:find [?e ... ]
-                                                :in $ ?key
-                                                :where
-                                                [?e :msg-fileservice.core/s3-key ?key]]
-                                              (d/db (d/connect db-uri))
-                                              (java.util.UUID/fromString s3-key)))]
-                    (->> (d/q
-                          '[:find ?tx
-                            :in $ ?e
-                            :where
-                            [?e _ _ ?tx]]
-                          (d/history (d/db (d/connect db-uri)))
-                          entity)
-                         (map #(d/entity (d/db (d/connect db-uri)) (first %)))
-                         (sort-by :db/txInstant)
-                         (map (fn [tx]
-                                (d/q '[:find [(pull ?e [:msg-fileservice.core/s3-key
-                                                        :msg-fileservice.core/version])...]
-                                       :in $ ?e
-                                       :where
-                                       [?e :msg-fileservice.core/s3-key ?key]
-                                       [?e :msg-fileservice.core/version ?version]]
-                                     (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
-                                     entity))))))
+                (fn [request] (:request request))
 
                 })
+
 
 
               }]})
