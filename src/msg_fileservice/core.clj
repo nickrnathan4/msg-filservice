@@ -66,7 +66,6 @@
                   (d/q '[:find [(pull ?e [*]) ... ]
                          :where
                          [?e ::bucket]
-                         [?e ::version]
                          [?e ::filename]
                          [?e ::s3-key]]
                        (d/db (d/connect db-uri))))
@@ -84,7 +83,6 @@
                                         (mapv (fn [file]
                                                 {:db/id (d/tempid :db.part/user)
                                                  ::bucket "msg-fileservice"
-                                                 ::version (bigint 1)
                                                  ::filename (:filename file)
                                                  ::s3-key (:s3-key file )})
                                               file-map))))})
@@ -92,7 +90,7 @@
               ["files/" :id]
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:get :delete]
+                :allowed-methods [:get :patch :delete]
 
                 :handle-ok
                 (fn [{{:keys [params content-type]
@@ -101,7 +99,7 @@
 
                  ;; Return file edn
                  (if (= "application/edn" content-type)
-                   (let [entity (read-string (:id params))
+                   (let [entity (:id params)
                          qry '[:find [(pull ?e [:msg-fileservice.core/s3-key
                                                 :msg-fileservice.core/filename])...]
                                :in $ ?e
@@ -109,37 +107,68 @@
                                [?e :msg-fileservice.core/s3-key]
                                [?e :msg-fileservice.core/filename]] ]
                      (cond
+
+                      ;; Return file info based on filename parameter
+                      (and (not (nil? (:filename params))) (read-string (:filename params)))
+                      (d/q '[:find [(pull ?e [*]) ... ]
+                             :in $ ?fname
+                             :where
+                             [?e ::filename ?fname]]
+                           (d/db (d/connect db-uri))
+                           entity)
+
+                      ;; Return file history based on db id parameter
                       (and (not (nil? (:history params))) (read-string (:history params)))
                       (->> (d/q '[:find ?tx :in $ ?e :where [?e _ _ ?tx]]
                                 (d/history (d/db (d/connect db-uri)))
-                                entity)
+                                (read-string entity))
                            (map #(d/entity (d/db (d/connect db-uri)) (first %)))
                            (sort-by :db/txInstant)
                            (map (fn [tx]
                                   (-> (first (d/q qry
                                                   (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
-                                                  entity))
+                                                  (read-string entity)))
                                       (assoc :db/txInstant (:db/txInstant tx))
                                       ))))
 
+                      ;; Return file history as of a time parameter
                       (not (nil? (:as-of params)))
                       (d/q qry
                            (d/as-of (d/db (d/connect db-uri)) (:as-of params))
-                           entity)
+                           (read-string entity))
 
+                      ;; Return file history since a time parameter
                       (not (nil? (:since params)))
                       (d/q qry
                            (d/since (d/db (d/connect db-uri)) (:since params))
-                           entity)
+                           (read-string entity))
 
                       :else
-                      (d/pull (d/db (d/connect db-uri)) '[*] entity)))
+                      ;; Return current file edn
+                      (d/pull (d/db (d/connect db-uri)) '[*] (read-string entity))))
 
                    ;; Download File
                    (if (nil? (:s3-key params))
                      (let [file (d/pull (d/db (d/connect db-uri)) '[*] (read-string (:id params)))]
                        (s3/download-file (str (::s3-key file)) (::filename file)))
                      (s3/download-file (:s3-key params) (:s3-key params)))))
+
+                :patch!
+                (fn [{{:keys [params]
+                       { {:keys [db-uri]} :environment} :service-data}
+                      :request}]
+                  (if-let [updates
+                           {:old-entity-data
+                            (d/pull (d/db (d/connect db-uri)) '[*] (read-string (:id params)))
+                            :new-filename (:filename (:file params))
+                            :new-key      (s3/upload-existing-file
+                                           (:tempfile (:file params)))}]
+
+                    @(d/transact (d/connect db-uri)
+                                 [{:db/id (:db/id (:old-entity-data updates))
+                                   ::filename (:new-filename updates)}
+                                  {:db/id (:db/id (:old-entity-data updates))
+                                   ::s3-key (:new-key updates)}])))
 
                 :delete!
                 (fn [{{{:keys [id]}                      :params
@@ -148,67 +177,12 @@
                   @(d/transact (d/connect db-uri)
                                [[:db.fn/retractEntity (read-string id)]]))})
 
-              ["filename/" :filename]
-              (liberator/resource
-               {:available-media-types ["application/edn"]
-                :allowed-methods [:get]
-                :handle-ok
-                (fn [{{{:keys [filename]}                  :params
-                       {{:keys [db-uri]} :environment}     :service-data
-                       } :request }]
-                  (d/q '[:find [(pull ?e [*]) ... ]
-                         :in $ ?fname
-                         :where
-                         [?e ::filename ?fname]]
-                       (d/db (d/connect db-uri))
-                       filename))})
-
-
-              ["update"]
-              (liberator/resource
-               {:available-media-types ["application/edn"]
-                :allowed-methods [:patch]
-                :patch!
-                (fn [{{:keys [params]
-                      { {:keys [db-uri]} :environment} :service-data}
-                     :request}]
-                  (if-let [updates
-                           {:old-entity-data
-                            (d/q '[:find [(pull ?e [:db/id
-                                                    ::version
-                                                    ::s3-key]) ... ]
-                                   :in $ ?s3-key
-                                   :where [?e ::s3-key ?s3-key]]
-                                 (d/db (d/connect db-uri))
-                                 (java.util.UUID/fromString
-                                  ((first (vec (keys params))) params)))
-
-                            :new-filename (:filename ((second (vec (keys params)))
-                                                      params))
-                            :new-key      (s3/upload-existing-file
-                                           (:tempfile ((second (vec (keys params)))
-                                                       params)))}]
-
-                    @(d/transact (d/connect db-uri)
-                                 [{:db/id (:db/id (first (:old-entity-data updates)))
-                                   ::version (+ 1 (::version (first (:old-entity-data updates))))}
-                                  {:db/id (:db/id (first (:old-entity-data updates)))
-                                   ::filename (:new-filename updates)}
-
-                                  {:db/id (:db/id (first (:old-entity-data updates)))
-                                   ::s3-key (:new-key updates)}])))})
-
-
               ["echo"]
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get]
                 :handle-ok
-                (fn [request] (:request request))
-
-                })
-
-
+                (fn [request] (:request request))})
 
               }]})
 
@@ -275,8 +249,7 @@
                             (basic-authentication/wrap-basic-authentication
                              (fn [name pass]
                                (= [name pass] http-basic-credentials)))
-                             )})
-
+                            )})
     }))
 
 (defn -main
