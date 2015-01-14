@@ -26,9 +26,12 @@
                  [com.datomic/datomic-pro "0.9.5052" :exclusions [joda-time]]
                  ]
 
+  :plugins [[environ/environ.lein "0.2.1"]]
+  :hooks [environ.leiningen.hooks]
   :uberjar-name "msg-salesforce-standalone.jar"
   :main msg-fileservice.core
-  :profiles {:uberjar {:aot [msg-fileservice.core]}
+  :profiles {:uberjar {:aot :all}
+             :production {:env {:production true}}
              :dev {:source-paths ["dev" "src"]
                    :dependencies [[org.clojure/tools.namespace "0.2.3"]]}}
 
