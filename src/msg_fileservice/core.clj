@@ -9,6 +9,7 @@
             [ring.middleware.defaults :refer [wrap-defaults]]
             [ring.middleware.basic-authentication :as basic-authentication]
             [datomic.api :as d]
+            [msg-fileservice.utils :as utils]
             [msg-fileservice.s3 :as s3]))
 
 ;; Component Dependencies
@@ -88,7 +89,7 @@
                            @(d/transact (d/connect db-uri)
                                         (mapv (fn [file]
                                                 {:db/id (d/tempid :db.part/user)
-                                                 ::bucket "msg-fileservice"
+                                                 ::bucket (environ/env :s3-bucket)
                                                  ::filename (:filename file)
                                                  ::s3-key (:s3-key file )})
                                               file-map))))})
@@ -109,39 +110,41 @@
                                :in $ ?e
                                :where
                                [?e :msg-fileservice.core/s3-key]
-                               [?e :msg-fileservice.core/filename]] ]
+                               [?e :msg-fileservice.core/filename]]]
                      (cond
                       ;; Return file history based on db id parameter
                       (and (not (nil? (:history params))) (read-string (:history params)))
                       (->> (d/q '[:find ?tx :in $ ?e :where [?e _ _ ?tx]]
                                 (d/history (d/db (d/connect db-uri)))
-                                (read-string entity))
+                                (BigInteger. entity))
                            (map #(d/entity (d/db (d/connect db-uri)) (first %)))
                            (sort-by :db/txInstant)
                            (map (fn [tx]
                                   (-> (first (d/q qry
                                                   (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
-                                                  (read-string entity)))
+                                                  (BigInteger. entity)))
                                       (assoc :db/txInstant (:db/txInstant tx))
                                       ))))
 
                       ;; Return file history as of a time parameter
                       (not (nil? (:as-of params)))
                       (d/q qry
-                           (d/as-of (d/db (d/connect db-uri)) (:as-of params))
-                           (read-string entity))
+                           (d/as-of (d/db (d/connect db-uri))
+                                    (utils/string->time (:as-of params)))
+                           (BigInteger. entity))
                       ;; Return file history since a time parameter
                       (not (nil? (:since params)))
                       (d/q qry
-                           (d/since (d/db (d/connect db-uri)) (:since params))
-                           (read-string entity))
+                           (d/since (d/db (d/connect db-uri))
+                                    (utils/string->time (:since params)))
+                           (BigInteger. entity))
                       :else
                       ;; Return current file edn
-                      (d/pull (d/db (d/connect db-uri)) '[*] (read-string entity))))
+                      (d/pull (d/db (d/connect db-uri)) '[*] (BigInteger. entity))))
 
                    ;; Download File
                    (if (nil? (:s3-key params))
-                     (let [file (d/pull (d/db (d/connect db-uri)) '[*] (read-string (:id params)))]
+                     (let [file (d/pull (d/db (d/connect db-uri)) '[*] (BigInteger. (:id params)))]
                        (s3/download-file (str (::s3-key file)) (::filename file)))
                      (s3/download-file (:s3-key params) (:s3-key params)))))
 
@@ -151,7 +154,7 @@
                       :request}]
                   (if-let [updates
                            {:old-entity-data
-                            (d/pull (d/db (d/connect db-uri)) '[*] (read-string (:id params)))
+                            (d/pull (d/db (d/connect db-uri)) '[*] (BigInteger. (:id params)))
                             :new-filename (:filename (:file params))
                             :new-key      (s3/upload-existing-file
                                            (:tempfile (:file params)))}]
@@ -167,7 +170,7 @@
                        {{:keys [db-uri]} :environment}   :service-data
                        } :request }]
                   @(d/transact (d/connect db-uri)
-                               [[:db.fn/retractEntity (read-string id)]]))})
+                               [[:db.fn/retractEntity (BigInteger. id)]]))})
 
               ["echo"]
               (liberator/resource
