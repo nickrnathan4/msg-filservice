@@ -28,7 +28,7 @@
 
   :plugins [[environ/environ.lein "0.2.1"]]
   :hooks [environ.leiningen.hooks]
-  :uberjar-name "msg-salesforce-standalone.jar"
+  :uberjar-name "msg-fileservice-standalone.jar"
   :main msg-fileservice.core
   :profiles {:uberjar {:aot :all}
              :production {:env {:production true}}
@@ -38,6 +38,7 @@
   :repositories {"my.datomic.com"
                  {:url      "https://my.datomic.com/repo"
                   :username ~(System/getenv "DATOMIC_USERNAME")
-                  :password ~(System/getenv "DATOMIC_PASSWORD")}}
+                  :password ~(System/getenv "DATOMIC_PASSWORD")}
+                 "conjars" "http://conjars.org/repo/"}
 
   )
