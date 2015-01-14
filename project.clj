@@ -27,12 +27,13 @@
                  ]
 
   :main msg-fileservice.core
+  :profiles {:uberjar {:aot [msg-fileservice.core]}
+             :dev {:source-paths ["dev" "src"]
+                   :dependencies [[org.clojure/tools.namespace "0.2.3"]]}}
 
   :repositories {"my.datomic.com"
                  {:url      "https://my.datomic.com/repo"
                   :username ~(System/getenv "DATOMIC_USERNAME")
                   :password ~(System/getenv "DATOMIC_PASSWORD")}}
 
-  :profiles {:dev {:source-paths ["dev" "src"]
-                   :dependencies [[org.clojure/tools.namespace "0.2.3"]]}}
   )

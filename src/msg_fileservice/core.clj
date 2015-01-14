@@ -10,7 +10,8 @@
             [ring.middleware.basic-authentication :as basic-authentication]
             [datomic.api :as d]
             [msg-fileservice.utils :as utils]
-            [msg-fileservice.s3 :as s3]))
+            [msg-fileservice.s3 :as s3])
+  (:gen-class))
 
 ;; Component Dependencies
 (defn service-definition []
