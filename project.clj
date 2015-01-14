@@ -26,6 +26,7 @@
                  [com.datomic/datomic-pro "0.9.5052" :exclusions [joda-time]]
                  ]
 
+  :uberjar-name "msg-salesforce-standalone.jar"
   :main msg-fileservice.core
   :profiles {:uberjar {:aot [msg-fileservice.core]}
              :dev {:source-paths ["dev" "src"]
