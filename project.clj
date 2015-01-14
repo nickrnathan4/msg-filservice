@@ -39,6 +39,6 @@
                  {:url      "https://my.datomic.com/repo"
                   :username ~(System/getenv "DATOMIC_USERNAME")
                   :password ~(System/getenv "DATOMIC_PASSWORD")}
-                 "conjars" "http://conjars.org/repo/"}
+                 }
 
   )
