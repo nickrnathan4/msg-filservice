@@ -19,9 +19,10 @@
 
   :uberjar-name "msg-fileservice-standalone.jar"
   :main msg-fileservice.core
-  :profiles {:uberjar {:aot [msg-fileservice.core]}
+  :profiles {
+             :uberjar {:aot [msg-fileservice.core]}
              :dev {:source-paths ["dev" "src"]
-                   :dependencies [[org.clojure/tools.namespace "0.2.7"]]}}
+                   :dependencies [[org.clojure/tools.namespace "0.2.3"]]}}
   :min-lein-version "2.0.0"
   :repositories {"my.datomic.com"
                  {:url      "https://my.datomic.com/repo"

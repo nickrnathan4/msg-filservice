@@ -16,7 +16,7 @@
 ;; Component Dependencies
 (defn service-definition []
   {
-   :environment {:httpkit-port 3006
+   :environment {:httpkit-port (BigInteger. (environ/env :port))
                  :http-basic-credentials [(environ/env :msg-http-basic-username)
                                           (environ/env :msg-http-basic-password)]
                  :db-uri "datomic:mem://msg-fileservice"}
@@ -190,9 +190,11 @@
     (println "Creating db")
     (d/create-database uri)
     (println "DB created")
+    (println "Transacting norms")
     (let [conn (d/connect uri)]
       (doseq [n norms]
         @(d/transact conn n)))
+    (println "Norms transacted")
     this)
 
   protocols/Stoppable
