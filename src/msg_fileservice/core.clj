@@ -31,12 +31,6 @@
               :db.install/_attribute :db.part/db}
 
              {:db/id                 #db/id[:db.part/db]
-              :db/ident              ::version
-              :db/valueType          :db.type/bigint
-              :db/cardinality        :db.cardinality/one
-              :db.install/_attribute :db.part/db}
-
-             {:db/id                 #db/id[:db.part/db]
               :db/ident              ::filename
               :db/valueType          :db.type/string
               :db/cardinality        :db.cardinality/one
@@ -62,13 +56,25 @@
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get :post]
                 :handle-ok
-                (fn [{{{{:keys [db-uri]} :environment} :service-data} :request}]
-                  (d/q '[:find [(pull ?e [*]) ... ]
-                         :where
-                         [?e ::bucket]
-                         [?e ::filename]
-                         [?e ::s3-key]]
-                       (d/db (d/connect db-uri))))
+                (fn [{{:keys [params]
+                       { {:keys [db-uri]} :environment} :service-data}
+                      :request}]
+                  (if (not (nil? (:filename params)))
+                    ;; Return file info based on filename parameter
+                    (d/q '[:find [(pull ?e [*]) ... ]
+                           :in $ ?fname
+                           :where
+                           [?e ::filename ?fname]]
+                         (d/db (d/connect db-uri))
+                         (:filename params))
+                    ;; Return all files
+                    (d/q '[:find [(pull ?e [*]) ... ]
+                           :where
+                           [?e ::bucket]
+                           [?e ::filename]
+                           [?e ::s3-key]]
+                         (d/db (d/connect db-uri)))))
+
                 :post!
                 (fn [{{:keys [params]
                        { {:keys [db-uri]} :environment} :service-data}
@@ -91,12 +97,10 @@
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get :patch :delete]
-
                 :handle-ok
                 (fn [{{:keys [params content-type]
                       { {:keys [db-uri]} :environment} :service-data}
                      :request}]
-
                  ;; Return file edn
                  (if (= "application/edn" content-type)
                    (let [entity (:id params)
@@ -107,16 +111,6 @@
                                [?e :msg-fileservice.core/s3-key]
                                [?e :msg-fileservice.core/filename]] ]
                      (cond
-
-                      ;; Return file info based on filename parameter
-                      (and (not (nil? (:filename params))) (read-string (:filename params)))
-                      (d/q '[:find [(pull ?e [*]) ... ]
-                             :in $ ?fname
-                             :where
-                             [?e ::filename ?fname]]
-                           (d/db (d/connect db-uri))
-                           entity)
-
                       ;; Return file history based on db id parameter
                       (and (not (nil? (:history params))) (read-string (:history params)))
                       (->> (d/q '[:find ?tx :in $ ?e :where [?e _ _ ?tx]]
@@ -136,13 +130,11 @@
                       (d/q qry
                            (d/as-of (d/db (d/connect db-uri)) (:as-of params))
                            (read-string entity))
-
                       ;; Return file history since a time parameter
                       (not (nil? (:since params)))
                       (d/q qry
                            (d/since (d/db (d/connect db-uri)) (:since params))
                            (read-string entity))
-
                       :else
                       ;; Return current file edn
                       (d/pull (d/db (d/connect db-uri)) '[*] (read-string entity))))
