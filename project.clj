@@ -22,7 +22,7 @@
   :profiles {:uberjar {:aot [msg-fileservice.core]}
              :dev {:source-paths ["dev" "src"]
                    :dependencies [[org.clojure/tools.namespace "0.2.7"]]}}
-
+  :min-lein-version "2.0.0"
   :repositories {"my.datomic.com"
                  {:url      "https://my.datomic.com/repo"
                   :username ~(System/getenv "DATOMIC_USERNAME")
