@@ -2,7 +2,9 @@
   (:require [aws.sdk.s3 :as s3]
             [clojure.java.io :as io]
             [environ.core :refer [env]]
-            [msg-fileservice.utils :as utils]))
+            [msg-fileservice.utils :as utils])
+  (:import [java.io File FileInputStream FileOutputStream]
+           [org.apache.commons.io IOUtils]))
 
 
 (defn list-files []
@@ -24,11 +26,7 @@
   (let [credentials {:access-key (env :aws-access-key)
                      :secret-key (env :aws-secret-key)}
         bucket      (env :s3-bucket)]
-    (utils/object->file
-     (:content (s3/get-object credentials bucket s3-key))
-     filename)
-    (io/as-file filename)
-    ))
+    (io/input-stream (:content (s3/get-object credentials bucket s3-key)))))
 
 (defn download-file-contents [s3-key]
 
