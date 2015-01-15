@@ -25,3 +25,12 @@
    and returns a string"
 
   (.format (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSSZ") java-time))
+
+
+(defn string-keys->keywords [headers]
+
+  "Converts a map with string keys to keywords"
+
+  (into {}
+        (for [[k v] headers]
+          [(keyword k) v])))
