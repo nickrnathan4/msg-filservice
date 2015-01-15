@@ -9,10 +9,7 @@
             [environ.core :as environ]
             [clj-time.core :as t]
             [datomic.api :as d]
-            [msg-fileservice.s3 :as s3]
-            [clojure.java.io :as io]
-            [msg-fileservice.utils :as utils]
-            ))
+            [clojure.java.io :as io]))
 
 (def system nil)
 
