@@ -17,7 +17,7 @@ Use the service to create, read, update and delete file resources.
 File resources can be accessed via the following HTTP endpoints.
 
 ###Create
-* **POST "files":** takes a file or multiple files as parameters, saves the files on S3, creates a database file entity
+* **POST "files":** takes a file or multiple files as form parameters, saves the files on S3, creates a database file entity
 
 ###Read
 * **GET "files":** returns a vector of maps containing all files stored in the database
@@ -44,10 +44,10 @@ Retrieve the version of a file as-of a particular time by setting the url parame
 Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 
 ###Update
-* **PATCH "update":** takes a file and that file entity's uuid (in that order) as arguments, uploads the new version of the file,  updates the file version, file name and uuid in the database
+* **PATCH "files/:id":** takes a url parameter specifying a unique file id, and a form parameter specifying the new file with the form key "file", and updates the file
 
 ###Delete
-* **DELETE "file/<uuid>":** takes a url parameter specifying a unique file uuid, deletes the file and retracts the database entity
+* **DELETE "files/:id":** takes a url parameter specifying a unique file id, retracts the database entity
 
 
 ## Environment
