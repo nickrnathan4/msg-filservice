@@ -177,13 +177,20 @@
                   @(d/transact (d/connect db-uri)
                                [[:db.fn/retractEntity (BigInteger. id)]]))})
 
-              ["echo"]
+              ["echo/" :id]
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get]
                 :as-response (fn [d ctx]
-                               (-> (as-response d ctx)
-                                   (assoc-in [:headers "filename"] "myfile")))
+                               (let [{{:keys [params]
+                                       {{:keys [db-uri]} :environment} :service-data}
+                                      :request} ctx
+                                      file (d/pull (d/db (d/connect db-uri))
+                                                   '[*] (BigInteger. (:id params)))]
+                                 (-> (as-response d ctx)
+                                     (assoc-in [:headers "content-disposition"]
+                                               (str "filename=" (::filename file)))))
+                               )
                 :handle-ok (fn [_] "test")
                 })
 
