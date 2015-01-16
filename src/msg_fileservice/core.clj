@@ -5,6 +5,7 @@
             [environ.core :as environ]
             [bidi.ring :as bidi-ring]
             [liberator.core :as liberator]
+            [liberator.representation :refer [as-response]]
             [ring.middleware.edn :as edn]
             [ring.middleware.defaults :refer [wrap-defaults]]
             [ring.middleware.basic-authentication :as basic-authentication]
@@ -180,8 +181,11 @@
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get]
-                :handle-ok
-                (fn [request] (:request request))})
+                :as-response (fn [d ctx]
+                               (-> (as-response d ctx)
+                                   (assoc-in [:headers "filename"] "myfile")))
+                :handle-ok (fn [this] this)
+                })
 
               }]})
 
