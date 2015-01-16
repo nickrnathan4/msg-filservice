@@ -24,9 +24,8 @@
   (let [credentials {:access-key (env :aws-access-key)
                      :secret-key (env :aws-secret-key)}
         bucket      (env :s3-bucket)]
-    {:filename filename
-     :filestream (io/input-stream
-                  (:content (s3/get-object credentials bucket s3-key)))}))
+    (io/input-stream
+     (:content (s3/get-object credentials bucket s3-key)))))
 
 (defn download-file-contents [s3-key]
 

@@ -153,6 +153,17 @@
                        (s3/download-file (str (::s3-key file)) (::filename file)))
                      (s3/download-file (:s3-key params) (:s3-key params)))))
 
+                :as-response
+                (fn [d ctx]
+                  (let [{{:keys [params]
+                          {{:keys [db-uri]} :environment} :service-data}
+                         :request} ctx
+                         file (d/pull (d/db (d/connect db-uri))
+                                      '[*] (BigInteger. (:id params)))]
+                    (-> (as-response d ctx)
+                        (assoc-in [:headers "content-disposition"]
+                                  (str "attachment; filename=" (::filename file))))))
+
                 :patch!
                 (fn [{{:keys [params]
                        { {:keys [db-uri]} :environment} :service-data}
@@ -177,21 +188,11 @@
                   @(d/transact (d/connect db-uri)
                                [[:db.fn/retractEntity (BigInteger. id)]]))})
 
-              ["echo/" :id]
+              ["echo"]
               (liberator/resource
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get]
-                :as-response (fn [d ctx]
-                               (let [{{:keys [params]
-                                       {{:keys [db-uri]} :environment} :service-data}
-                                      :request} ctx
-                                      file (d/pull (d/db (d/connect db-uri))
-                                                   '[*] (BigInteger. (:id params)))]
-                                 (-> (as-response d ctx)
-                                     (assoc-in [:headers "content-disposition"]
-                                               (str "filename=" (::filename file)))))
-                               )
-                :handle-ok (fn [_] "test")
+                :handle-ok (fn [request] (:request request))
                 })
 
               }]})
