@@ -184,7 +184,7 @@
                 :as-response (fn [d ctx]
                                (-> (as-response d ctx)
                                    (assoc-in [:headers "filename"] "myfile")))
-                :handle-ok (fn [this] this)
+                :handle-ok (fn [_] "test")
                 })
 
               }]})
