@@ -21,7 +21,7 @@ File resources can be accessed via the following HTTP endpoints.
 
 ###Read
 * **GET "files":** returns a vector of maps containing all files stored in the database
-* **GET "files/filename="example.txt":** takes a url parameter  "filename", returns a vector of maps containing all files stored in the database with the specified file name
+* **GET "files?filename="example.txt":** takes a url parameter  "filename", returns a vector of maps containing all files stored in the database with the specified file name
 
 * **GET "files/:id":**
 
