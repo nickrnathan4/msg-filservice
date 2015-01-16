@@ -104,8 +104,10 @@
                        { {:keys [db-uri]} :environment} :service-data}
                       :request}]
                  ;; Return file edn
-                  (if (= "application/edn"
-                         (:content-type (utils/string-keys->keywords headers)))
+                  (if (boolean (and
+                                (not (nil? (:content-type (utils/string-keys->keywords headers))))
+                                (re-find #"application/edn"
+                                         (:content-type (utils/string-keys->keywords headers)))))
                    (let [entity (:id params)
                          qry '[:find [(pull ?e [:msg-fileservice.core/s3-key
                                                 :msg-fileservice.core/filename])...]
