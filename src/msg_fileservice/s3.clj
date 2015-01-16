@@ -15,7 +15,7 @@
     (s3/list-objects credentials bucket)))
 
 
-(defn download-file [s3-key filename]
+(defn download-file [s3-key]
 
   "Takes a file key (UUID) and file name [& file path].
    Writes the file to disk.
@@ -72,5 +72,4 @@
                       :secret-key (env :aws-secret-key)}
          bucket      (env :s3-bucket)]
     (s3/delete-object credentials bucket s3-key)
-    s3-key
-    ))
+    s3-key))

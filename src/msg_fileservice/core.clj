@@ -52,7 +52,7 @@
                {:available-media-types ["text/html"]
                 :allowed-methods [:get]
                 :handle-ok
-                "<html>Main Street Genome File Service</html>"})
+                "<html><h1>Main Street Genome File Service</h1></html>"})
 
               "files"
               (liberator/resource
@@ -128,9 +128,7 @@
                                   (-> (first (d/q qry
                                                   (d/as-of (d/db (d/connect db-uri)) (:db/txInstant tx))
                                                   (BigInteger. entity)))
-                                      (assoc :db/txInstant (:db/txInstant tx))
-                                      ))))
-
+                                      (assoc :db/txInstant (:db/txInstant tx))))))
                       ;; Return file history as of a time parameter
                       (not (nil? (:as-of params)))
                       (d/q qry
@@ -150,8 +148,8 @@
                    ;; Download File
                    (if (nil? (:s3-key params))
                      (let [file (d/pull (d/db (d/connect db-uri)) '[*] (BigInteger. (:id params)))]
-                       (s3/download-file (str (::s3-key file)) (::filename file)))
-                     (s3/download-file (:s3-key params) (:s3-key params)))))
+                       (s3/download-file (str (::s3-key file))))
+                     (s3/download-file (:s3-key params)))))
 
                 :as-response
                 (fn [d ctx]
