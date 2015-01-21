@@ -265,10 +265,10 @@
     :httpkit (httpkit/httpkit
               {:config  {:port httpkit-port}
                :handler (-> (bidi-ring/make-handler routes)
-                            (wrap-service-data service-data)
-                            (wrap-defaults custom-wrap)
-                            edn/wrap-edn-params
-                            (basic-authentication/wrap-basic-authentication
+                            ;(wrap-service-data service-data)
+                            ;(wrap-defaults custom-wrap)
+                            ;edn/wrap-edn-params
+                            #_(basic-authentication/wrap-basic-authentication
                              (fn [name pass]
                                (= [name pass] http-basic-credentials)))
                             )})
