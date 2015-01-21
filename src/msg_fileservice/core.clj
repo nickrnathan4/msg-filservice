@@ -197,8 +197,11 @@
               ["echo"]
               (liberator/resource
                {:available-media-types ["application/edn"]
-                :allowed-methods [:get]
+                :allowed-methods [:get :post]
                 :handle-ok (fn [request] (:request request))
+                :post!(fn[_] "do nothing")
+                :handle-created
+                (fn [ctx] (:request ctx))
                 })
 
               }]})
