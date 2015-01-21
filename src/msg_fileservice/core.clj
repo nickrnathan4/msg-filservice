@@ -88,21 +88,16 @@
                                           :s3-key (s3/upload-existing-file
                                                    (:tempfile (file params)))})
                                        (keys params)))]
-                    {:transaction
-                     @(d/transact (d/connect db-uri)
-                                  (mapv (fn [file]
-                                          {:db/id (d/tempid :db.part/user)
-                                           ::bucket (environ/env :s3-bucket)
-                                           ::filename (:filename file)
-                                           ::s3-key (:s3-key file )})
-                                        file-map))}))
-                :handle-created
-                (fn [ctx]
-                  (d/pull-many
-                   (d/db (d/connect
-                          (:db-uri (:environment (:service-data (:request ctx))))))
-                   '[*]
-                   (vec (vals (:tempids (:transaction ctx))))))})
+
+                    @(d/transact (d/connect db-uri)
+                                   (mapv (fn [file]
+                                           {:db/id (d/tempid :db.part/user)
+                                            ::bucket (environ/env :s3-bucket)
+                                            ::filename (:filename file)
+                                            ::s3-key (:s3-key file )})
+                                         file-map))))
+
+                })
 
               ["files/" :id]
               (liberator/resource
