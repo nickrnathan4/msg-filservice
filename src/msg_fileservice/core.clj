@@ -199,7 +199,7 @@
                {:available-media-types ["application/edn"]
                 :allowed-methods [:get :post]
                 :handle-ok (fn [request] (:request request))
-                :post!(fn[_])
+                :post!(fn[_] "do-nothing")
                 :handle-created
                 (fn [ctx] (:request ctx))
                 })
