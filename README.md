@@ -50,6 +50,51 @@ Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 * **DELETE "files/:id":** takes a url parameter specifying a unique file id, retracts the database entity
 
 
+##Examples
+
+```clojure
+(require '[clj-http.client :as client])
+
+; Get all files in database
+(client/get "http://msg-fileservice.herokuapp.com/files"
+{:basic-auth ["user" "pass]})
+
+; Get single file edn
+(client/get "http://msg-fileservice.herokuapp.com/files/17592186045419"
+            {:basic-auth [(:user basic-auth) (:pass basic-auth)]
+             :headers {"Content-Type" "application/edn"}})
+
+; Download file
+(:import [org.apache.commons.io IOUtils])
+
+(defn get-file [id file-destination]
+  (let [resp (client/get (str "http://msg-fileservice.herokuapp.com/files/" id)
+                         {:basic-auth [(:user basic-auth) (:pass basic-auth)]})
+        filename (second (clojure.string/split
+                          (get (:headers resp) "Content-Disposition") #"="))]
+    (with-open [out (io/output-stream (str file-destination filename ))]
+    (.write out (IOUtils/toByteArray (:body resp))))))
+
+; Upload file
+(client/post "http://msg-fileservice.herokuapp.com/files"
+               {:basic-auth ["user" "pass"]
+                :multipart [{:name "file" :content (clojure.java.io/file file-path)}]})
+
+; Upload multiple files
+(client/post "http://msg-fileservice.herokuapp.com/files"
+             {:basic-auth ["user" "pass"]
+              :multipart [{:name "first-file" :content (clojure.java.io/file "/test-files/test-file-excel.xlsx")}
+                          {:name "second-file" :content (clojure.java.io/file "/test-files/beach.jpg")}]})
+
+; Update file
+(client/patch "http://msg-fileservice.herokuapp.com/files/17592186045419"
+               {:basic-auth ["user" "pass"
+               :multipart [{:name "file" :content (clojure.java.io/file "/test-files/updated-file.docx)}]})
+
+
+```
+
+
 ## Environment
 
 Set the following environment variables.
