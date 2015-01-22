@@ -61,7 +61,7 @@ Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 
 ; Get single file edn
 (client/get "http://msg-fileservice.herokuapp.com/files/17592186045419"
-            {:basic-auth [(:user basic-auth) (:pass basic-auth)]
+            {:basic-auth ["user" "pass"]
              :headers {"Content-Type" "application/edn"}})
 
 ; Download file
@@ -69,10 +69,10 @@ Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 
 (defn get-file [id file-destination]
   (let [resp (client/get (str "http://msg-fileservice.herokuapp.com/files/" id)
-                         {:basic-auth [(:user basic-auth) (:pass basic-auth)]})
+                         {:basic-auth ["user" "pass"]})
         filename (second (clojure.string/split
                           (get (:headers resp) "Content-Disposition") #"="))]
-    (with-open [out (io/output-stream (str file-destination filename ))]
+    (with-open [out (clojure.java.io/output-stream (str file-destination filename ))]
     (.write out (IOUtils/toByteArray (:body resp))))))
 
 ; Upload file
@@ -89,8 +89,11 @@ Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 ; Update file
 (client/patch "http://msg-fileservice.herokuapp.com/files/17592186045419"
                {:basic-auth ["user" "pass"
-               :multipart [{:name "file" :content (clojure.java.io/file "/test-files/updated-file.docx)}]})
+               :multipart [{:name "file" :content (clojure.java.io/file "/test-files/updated-file.docx")}]})
 
+; Delete file
+(client/delete "http://msg-fileservice.herokuapp.com/files/17592186045419"
+    {:basic-auth ["user" "pass"]})
 
 ```
 
