@@ -57,7 +57,7 @@ Time parameters must take the following format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 
 ; Get all files in database
 (client/get "http://msg-fileservice.herokuapp.com/files"
-{:basic-auth ["user" "pass]})
+{:basic-auth ["user" "pass"]})
 
 ; Get single file edn
 (client/get "http://msg-fileservice.herokuapp.com/files/17592186045419"
